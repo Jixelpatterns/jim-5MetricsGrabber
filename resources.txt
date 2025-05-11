@@ -36,6 +36,7 @@ jim-mining
 jim-notepad
 jim-ondutyblips
 jim-pausemenu
+jim-payments
 jim-proputil
 jim-recycle
 jim-shops
