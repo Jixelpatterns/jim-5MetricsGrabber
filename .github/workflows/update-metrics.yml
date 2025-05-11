@@ -1,0 +1,42 @@
+name: Update 5Metrics Server Counts
+
+on:
+  schedule:
+    - cron: "0 1 * * *"  # Daily at 1AM UTC
+  workflow_dispatch:
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install tools
+        run: sudo apt-get update && sudo apt-get install -y jq
+
+      - name: Create stats folder
+        run: mkdir -p stats
+
+      - name: Loop through resource list
+        run: |
+          while IFS= read -r resource; do
+            echo "Fetching $resource..."
+            curl -s -X POST https://api.5metrics.dev/getResource \
+              -H "Content-Type: application/json" \
+              -H "Origin: https://5metrics.dev" \
+              -d "{\"resource\":\"$resource\"}" -o response.json
+
+            server_count=$(jq '.resource.servers' response.json)
+
+            # Output just the number into a .txt file
+            echo "$server_count" > "stats/${resource}.txt"
+          done < resources.txt
+
+      - name: Commit updated stats
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add stats/*.txt
+          git commit -m "Update server counts for all resources" || echo "No changes"
+          git push
