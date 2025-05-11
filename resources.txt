@@ -14,6 +14,7 @@ jim-mechanic
 jim-menus
 jim-npcservice
 jim-ondutyblips
+jim-plates
 jim-parking
 jim-pizzathis
 jim-popsdiner
