@@ -1,4 +1,5 @@
 jim_bridge
+jim-bars
 jim-afkcam
 jim-bakery
 jim-beanmachine
@@ -41,3 +42,4 @@ jim-shops
 jim-skills
 jim-smallresources
 jim-trains
+jim-minigame
