@@ -9,7 +9,7 @@ jobs:
   update:
     runs-on: ubuntu-latest
     permissions:
-      contents: write  # ✅ Allows commit to repo
+      contents: write
 
     steps:
       - name: Checkout repository
@@ -21,7 +21,7 @@ jobs:
       - name: Prepare stats directory
         run: mkdir -p stats
 
-      - name: Fetch server count for each resource
+      - name: Fetch server + rankChange for each resource
         run: |
           while IFS= read -r resource; do
             echo "Fetching $resource..."
@@ -31,9 +31,21 @@ jobs:
               -d "{\"resource\":\"$resource\"}" -o temp.json
 
             if jq -e '.success' temp.json > /dev/null; then
-              jq '.resource.servers' temp.json > "stats/${resource}.txt"
+              servers=$(jq '.resource.servers' temp.json)
+              change=$(jq '.resource.serverRankChange' temp.json)
+
+              # Determine arrow and color
+              if [ "$change" -gt 0 ]; then
+                arrow="↑"
+              elif [ "$change" -lt 0 ]; then
+                arrow="↓"
+              else
+                arrow="-"
+              fi
+
+              echo "$servers $arrow" > "stats/${resource}.txt"
             else
-              echo "0" > "stats/${resource}.txt"
+              echo "0 -" > "stats/${resource}.txt"
               echo "⚠️ Failed to fetch $resource"
             fi
           done < resources.txt
@@ -43,5 +55,5 @@ jobs:
           git config --global user.name "github-actions[bot]"
           git config --global user.email "github-actions[bot]@users.noreply.github.com"
           git add stats/*.txt
-          git diff --cached --quiet || git commit -m "Update server counts"
+          git diff --cached --quiet || git commit -m "Update server stats with rank change"
           git push
