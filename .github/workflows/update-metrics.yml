@@ -39,7 +39,7 @@ jobs:
             elif [ "$change" -lt 0 ]; then
               direction="down"
             else
-              direction="none"
+              direction="up"
             fi
 
             echo "$servers|$direction" > "stats/${resource}.txt"
