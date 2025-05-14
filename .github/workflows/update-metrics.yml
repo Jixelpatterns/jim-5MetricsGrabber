@@ -34,16 +34,16 @@ jobs:
               servers=$(jq '.resource.servers' temp.json)
               change=$(jq '.resource.serverRankChange' temp.json)
 
-              # Determine arrow and color
-              if [ "$change" -gt 0 ]; then
-                arrow="↑"
-              elif [ "$change" -lt 0 ]; then
-                arrow="↓"
-              else
-                arrow="-"
-              fi
+            if [ "$change" -gt 0 ]; then
+              direction="up"
+            elif [ "$change" -lt 0 ]; then
+              direction="down"
+            else
+              direction="none"
+            fi
 
-              echo "$servers $arrow" > "stats/${resource}.txt"
+            echo "$servers|$direction" > "stats/${resource}.txt"
+
             else
               echo "0 -" > "stats/${resource}.txt"
               echo "⚠️ Failed to fetch $resource"
