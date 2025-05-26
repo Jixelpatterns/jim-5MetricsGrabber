@@ -2,7 +2,7 @@ name: Update 5Metrics Server Counts
 
 on:
   schedule:
-    - cron: "0 1 * * *"  # Daily at 1AM UTC
+    - cron: "0 */6 * * *"  # Every 6 hours
   workflow_dispatch:
 
 jobs:
