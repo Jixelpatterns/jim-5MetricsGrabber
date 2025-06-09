@@ -24,6 +24,7 @@ jim-tequilala
 jim-upnatomhorny
 jim-vanillaunicorn
 jim-blipcontroller
+jim-imagedisplay
 jim-boarding
 jim-chairs
 jim-consumables
@@ -43,4 +44,3 @@ jim-skills
 jim-smallresources
 jim-trains
 jim-minigame
-jim-imagedisplay
