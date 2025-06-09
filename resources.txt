@@ -12,7 +12,6 @@ jim-freecam
 jim-henhouse
 jim-lumberjack
 jim-mechanic
-jim-menus
 jim-npcservice
 jim-ondutyblips
 jim-plates
@@ -44,3 +43,4 @@ jim-skills
 jim-smallresources
 jim-trains
 jim-minigame
+jim-imagedisplay
