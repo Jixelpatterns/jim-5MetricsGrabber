@@ -2,7 +2,7 @@ name: Update 5Metrics Server Counts
 
 on:
   schedule:
-    - cron: "0 */6 * * *"  # Every 6 hours
+    - cron: "0 */6 * * *" # Every 6 hours
   workflow_dispatch:
 
 jobs:
@@ -13,47 +13,69 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Install jq
-        run: sudo apt-get update && sudo apt-get install -y jq
-
-      - name: Prepare stats directory
-        run: mkdir -p stats
-
-      - name: Fetch server + rankChange for each resource
+      - name: Fetch server count + rank for each resource
         run: |
-          while IFS= read -r resource; do
+          mkdir -p stats
+          failed=0
+
+          # Prints the value from a 5Metrics badge, e.g. the "91" in aria-label="servers: 91".
+          # longNumber=1 asks for the full number instead of an abbreviation like 1.2k.
+          badge_value() {
+            curl -sf --retry 3 --retry-delay 2 \
+              "https://badges.5metrics.dev/$1/$2.svg?longNumber=1" \
+              | sed -n 's/.*aria-label="[^"]*: \([^"]*\)".*/\1/p' \
+              | head -n 1
+          }
+
+          while IFS= read -r resource || [ -n "$resource" ]; do
+            resource="${resource%$'\r'}"
+            [ -z "$resource" ] && continue
             echo "Fetching $resource..."
-            curl -s -X POST https://api.5metrics.dev/getResource \
-              -H "Content-Type: application/json" \
-              -H "Origin: https://5metrics.dev" \
-              -d "{\"resource\":\"$resource\"}" -o temp.json
 
-            if jq -e '.success' temp.json > /dev/null; then
-              servers=$(jq '.resource.servers' temp.json)
-              change=$(jq '.resource.serverRankChange' temp.json)
+            servers=$(badge_value "$resource" servers | tr -d ',')
+            rank=$(badge_value "$resource" serverRank | tr -d ',#')
 
-            if [ "$change" -gt 0 ]; then
-              direction="up"
-            elif [ "$change" -lt 0 ]; then
-              direction="down"
+            if [[ "$servers" =~ ^[0-9]+$ && "$rank" =~ ^[0-9]+$ ]]; then
+              # The badges give the current rank but not the rank change, so work out the
+              # arrow by comparing with the rank saved last run. If the rank hasn't moved,
+              # keep whatever arrow was there before. (Lower rank number = better = "up".)
+              prev_rank=$(cat "stats/${resource}.rank" 2>/dev/null || true)
+              direction=$(cut -s -d'|' -f2 "stats/${resource}.txt" 2>/dev/null || true)
+              direction="${direction:-up}"
+
+              if [[ "$prev_rank" =~ ^[0-9]+$ ]]; then
+                if [ "$rank" -lt "$prev_rank" ]; then
+                  direction="up"
+                elif [ "$rank" -gt "$prev_rank" ]; then
+                  direction="down"
+                fi
+              fi
+
+              echo "$servers|$direction" > "stats/${resource}.txt"
+              echo "$rank" > "stats/${resource}.rank"
             else
-              direction="up"
-            fi
-
-            echo "$servers|$direction" > "stats/${resource}.txt"
-
-            else
-              echo "0 -" > "stats/${resource}.txt"
-              echo "⚠️ Failed to fetch $resource"
+              # Leave the previous stats file untouched instead of overwriting it with "0 -"
+              echo "::warning::Failed to read badge values for $resource (servers='$servers', rank='$rank')"
+              failed=$((failed + 1))
             fi
           done < resources.txt
 
+          echo "failed=$failed" >> "$GITHUB_ENV"
+
       - name: Commit and push if changed
         run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git add stats/*.txt
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add stats
           git diff --cached --quiet || git commit -m "Update server stats with rank change"
           git push
+
+      # Runs last so good results are still saved, but the run goes red (and GitHub emails you)
+      # if anything couldn't be fetched.
+      - name: Fail if any resource could not be fetched
+        if: env.failed != '0'
+        run: |
+          echo "::error::${failed} resource(s) failed to fetch"
+          exit 1
